@@ -66,17 +66,40 @@ class Loan(models.Model):
     def __str__(self):
         return self.identifier
 
+    def calculate_expected_irr(self):
+        cashflows = [
+            (self.investment_date, -self.invested_amount),
+            (self.maturity_date, self.invested_amount + self.expected_interest_amount)
+        ]
+        return xirr(cashflows) * 100
+
+    def calculate_realized_irr(self, cashflows):
+        return xirr(cashflows) * 100
+
+    def check_is_closed(self, cashflows):
+        total_repayments = sum(amount for date, amount in cashflows if amount > 0)
+        expected_amount = self.invested_amount + self.expected_interest_amount
+        return total_repayments >= expected_amount
+
     def save(self, *args, **kwargs):
         if self.invested_amount is not None and self.investment_date is None:
-            self.investment_date = timezone.now().date()
+            funding_cashflow = self.cashflow_set.filter(type="FUNDING").first()
+            if funding_cashflow:
+                self.investment_date = funding_cashflow.reference_date
+                self.invested_amount = funding_cashflow.amount
 
         if self.invested_amount is not None and self.expected_interest_amount is None:
-            # Calculate expected_interest_amount and expected_irr
             self.expected_interest_amount = self.total_expected_interest_amount * (self.invested_amount / self.total_amount)
 
-        if self.is_closed and self.realized_irr is None:
-            # Calculate realized_irr
-            pass
+        if self.invested_amount is not None and self.expected_irr is None:
+            self.expected_irr = self.calculate_expected_irr()
+
+        if not self.is_closed:
+            cashflows = [(cf.reference_date, cf.amount) for cf in self.cashflow_set.exclude(type="FUNDING")]
+            if cashflows:
+                self.is_closed = self.check_is_closed(cashflows)
+                if self.is_closed:
+                    self.realized_irr = self.calculate_realized_irr(cashflows)
 
         super(Loan, self).save(*args, **kwargs)
 

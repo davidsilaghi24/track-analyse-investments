@@ -32,5 +32,21 @@ services:
       - POSTGRES_USER=devuser
       - POSTGRES_PASSWORD=changeme
 
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  celery:
+    build: .
+    container_name: celery
+    command: celery -A app worker --loglevel=info
+    volumes:
+      - ./app:/app
+    depends_on:
+      - db
+      - redis
+
 volumes:
   dev-db-data:

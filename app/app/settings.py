@@ -136,3 +136,7 @@ AUTH_USER_MODEL = 'ta_investments.User'
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+CELERY_BROKER_URL = 'redis://redis:6379'
+
+CELERY_RESULT_BACKEND = 'redis://redis:6379'

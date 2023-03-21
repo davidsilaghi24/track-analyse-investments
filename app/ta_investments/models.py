@@ -1,6 +1,7 @@
 """
 Database models
 """
+from pyxirr import xirr
 from decimal import Decimal
 from django.db import models
 from django.utils import timezone
@@ -91,7 +92,7 @@ class Loan(models.Model):
         if self.invested_amount is not None and self.expected_interest_amount is None:
             self.expected_interest_amount = self.total_expected_interest_amount * (self.invested_amount / self.total_amount)
 
-        if self.invested_amount is not None and self.expected_irr is None:
+        if self.invested_amount is not None and self.expected_irr is None and self.investment_date is not None:
             self.expected_irr = self.calculate_expected_irr()
 
         if not self.is_closed:

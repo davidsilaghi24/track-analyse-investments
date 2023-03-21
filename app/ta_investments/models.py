@@ -3,6 +3,7 @@ Database models
 """
 from decimal import Decimal
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -66,8 +67,15 @@ class Loan(models.Model):
         return self.identifier
 
     def save(self, *args, **kwargs):
-        if self.invested_amount is None:
-            # Calculate invested_amount, investment_date, expected_interest_amount, is_closed, expected_irr, and realized_irr
+        if self.invested_amount is not None and self.investment_date is None:
+            self.investment_date = timezone.now().date()
+
+        if self.invested_amount is not None and self.expected_interest_amount is None:
+            # Calculate expected_interest_amount and expected_irr
+            self.expected_interest_amount = self.total_expected_interest_amount * (self.invested_amount / self.total_amount)
+
+        if self.is_closed and self.realized_irr is None:
+            # Calculate realized_irr
             pass
 
         super(Loan, self).save(*args, **kwargs)

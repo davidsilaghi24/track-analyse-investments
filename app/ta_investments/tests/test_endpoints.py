@@ -1,7 +1,8 @@
-from django.test import TestCase
+import uuid
 from django.urls import reverse
-from rest_framework.test import APIClient
+from django.test import TestCase
 from rest_framework import status
+from rest_framework.test import APIClient
 from ..models import Loan, Cashflow, User
 
 
@@ -82,7 +83,33 @@ class CashflowAPITestCase(TestCase):
         self.assertIsNotNone(self.loan.expected_interest_amount)
         self.assertIsNotNone(self.loan.expected_irr)
 
-    # Additional tests for other operations like list, retrieve, update and delete
+    def test_list_cashflows(self):
+        Cashflow.objects.create(loan_identifier=self.loan, reference_date=self.cashflow_data['reference_date'], type=self.cashflow_data['type'], amount=self.cashflow_data['amount'])
+        response = self.client.get(reverse('cashflow-list-create'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_retrieve_cashflow(self):
+        cashflow = Cashflow.objects.create(loan_identifier=self.loan, reference_date=self.cashflow_data['reference_date'], type=self.cashflow_data['type'], amount=self.cashflow_data['amount'])
+        response = self.client.get(reverse('cashflow-detail', kwargs={'pk': cashflow.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(str(response.data['loan_identifier']), cashflow.loan_identifier.identifier)
+
+    def test_update_cashflow(self):
+        cashflow = Cashflow.objects.create(loan_identifier=self.loan, reference_date=self.cashflow_data['reference_date'], type=self.cashflow_data['type'], amount=self.cashflow_data['amount'])
+        updated_data = self.cashflow_data.copy()
+        updated_data['amount'] = 90000.00
+        response = self.client.put(reverse('cashflow-detail', kwargs={'pk': cashflow.pk}), updated_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        cashflow.refresh_from_db()
+        self.assertEqual(cashflow.amount, 90000.00)
+
+    def test_delete_cashflow(self):
+        cashflow = Cashflow.objects.create(loan_identifier=self.loan, reference_date=self.cashflow_data['reference_date'], type=self.cashflow_data['type'], amount=self.cashflow_data['amount'])
+        response = self.client.delete(reverse('cashflow-detail', kwargs={'pk': cashflow.pk}))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Cashflow.objects.count(), 0)
+
 
 class TokenAPITestCase(TestCase):
     def setUp(self):

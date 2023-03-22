@@ -80,7 +80,7 @@ class Loan(models.Model):
         if funding_cash_flow:
             self.investment_date = funding_cash_flow.reference_date
             self.invested_amount = funding_cash_flow.amount
-            self.expected_interest_amount = self.total_expected_interest_amount * (self.invested_amount / self.total_amount)
+            self.expected_interest_amount = Decimal(self.total_expected_interest_amount) * (Decimal(self.invested_amount) / Decimal(self.total_amount))
 
             dates = [self.investment_date, self.maturity_date]
             amounts = [-self.invested_amount, self.invested_amount + self.expected_interest_amount]

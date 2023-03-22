@@ -58,5 +58,5 @@ class Command(BaseCommand):
                 f.write(f"Password: {analyst_password}\n")
                 f.write("\n")
 
-        with open(readme_path, "a") as f:
-            f.write("Please change your password after logging in for the first time.\n")
+            with open(readme_path, "a") as f:
+                f.write("Please change your password after logging in for the first time.\n")

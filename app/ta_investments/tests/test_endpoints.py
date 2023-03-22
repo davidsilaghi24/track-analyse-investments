@@ -1,9 +1,11 @@
-import uuid
+import tempfile
+from pathlib import Path
 from django.urls import reverse
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 from ..models import Loan, Cashflow, User
+from django.test import TestCase, override_settings
 
 
 class LoanAPITestCase(TestCase):
@@ -141,3 +143,25 @@ class TokenAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access', response.data)
         self.assertIn('refresh', response.data)
+
+
+class CsvUploadViewTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.resource_path = Path(__file__).parent / 'resources'
+        self.loan_csv = self.resource_path / 'loans.csv'
+        self.cashflow_csv = self.resource_path / 'cash_flows.csv'
+        self.test_user = User.objects.create_user(email='testuser@example.com', password='testpassword', user_type='Investor')
+        self.client.force_authenticate(user=self.test_user)
+
+    @override_settings(MEDIA_ROOT=tempfile.gettempdir())
+    def test_upload_loan_csv(self):
+        with open(self.loan_csv, 'rb') as f:
+            response = self.client.post('/api/ta_investments/upload/loan-csv/', {'file': f}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    @override_settings(MEDIA_ROOT=tempfile.gettempdir())
+    def test_upload_cashflow_csv(self):
+        with open(self.cashflow_csv, 'rb') as f:
+            response = self.client.post('/api/ta_investments/upload/cashflow-csv/', {'file': f}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)

@@ -130,3 +130,5 @@ dmypy.json
 
 #UserReadMe
 app/UserReadMe.md
+
+**/.DS_Store

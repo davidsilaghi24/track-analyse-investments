@@ -11,17 +11,20 @@ class UserModelTests(TestCase):
     Test User model.
     """
 
-    def test_create_user_with_email_successful(self):
+    def test_create_user_with_email_and_type_successful(self):
         """
-        Test creating a User with email is successful.
+        Test creating a User with email and type is successful.
         """
         email = "test@example.com"
         password = "testpass123"
+        user_type = "Investor"
         user = User.objects.create_user(
             email=email,
-            password=password
+            password=password,
+            user_type=user_type
         )
         self.assertEqual(user.email, email)
+        self.assertEqual(user.user_type, user_type)
         self.assertTrue(user.check_password(password))
 
     def test_new_user_email_normalized(self):
@@ -33,7 +36,11 @@ class UserModelTests(TestCase):
             ['Test2@Example.com', 'Test2@example.com'],
         ]
         for email, expected in sample_emails:
-            user = User.objects.create_user(email, 'sample123')
+            user = User.objects.create_user(
+                email=email,
+                password='testpass123',
+                user_type='Investor'
+                )
             self.assertEqual(user.email, expected)
 
     def test_new_user_without_email_raiser_error(self):
@@ -41,7 +48,7 @@ class UserModelTests(TestCase):
         Test that creating a User without email raises value error.
         """
         with self.assertRaises(ValueError):
-            User.objects.create_user("", "test123")
+            User.objects.create_user("", "test123", "Investor")
 
     def test_create_superuser(self):
         """
@@ -50,7 +57,18 @@ class UserModelTests(TestCase):
         user = User.objects.create_superuser(
             'test@example.com',
             'test123',
+            user_type='Admin'
         )
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
 
+    def test_user_string_representation(self):
+        """
+        Test the string representation of the User model.
+        """
+        user = User.objects.create_user(
+            email='test@example.com',
+            password='testpass123',
+            user_type='Investor',
+        )
+        self.assertEqual(str(user), user.email)

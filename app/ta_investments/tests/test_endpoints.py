@@ -111,6 +111,26 @@ class CashflowAPITestCase(TestCase):
         self.assertEqual(Cashflow.objects.count(), 0)
 
 
+class AnalystCannotCreateLoanTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.analyst_user = User.objects.create_user(email='analyst@example.com', password='testpassword', user_type='Analyst')
+        self.client.force_authenticate(user=self.analyst_user)
+        self.loan_data = {
+            "identifier": "123e4567-e89b-12d3-a456-426614174000",
+            "issue_date": "2023-01-01",
+            "rating": 6,
+            "maturity_date": "2023-12-31",
+            "total_amount": 100000.00,
+            "total_expected_interest_amount": 5000.00,
+        }
+
+    def test_analyst_cannot_create_loan(self):
+        response = self.client.post(reverse('loan-list-create'), self.loan_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Loan.objects.count(), 0)
+
+
 class TokenAPITestCase(TestCase):
     def setUp(self):
         self.client = APIClient()

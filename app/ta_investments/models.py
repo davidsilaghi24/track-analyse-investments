@@ -12,8 +12,15 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin
 )
+from django.dispatch import receiver
+from django.contrib.auth.models import Group
+from django.db.models.signals import post_migrate
 from django.core.validators import MinValueValidator, MaxValueValidator
 
+@receiver(post_migrate)
+def create_groups(sender, **kwargs):
+    Group.objects.get_or_create(name='Investor')
+    Group.objects.get_or_create(name='Analyst')
 
 class UserManager(BaseUserManager):
     """Manager for users."""
@@ -27,6 +34,17 @@ class UserManager(BaseUserManager):
         user = self.model(email=self.normalize_email(email), user_type=user_type, **extra_fields)
         user.set_password(password)
         user.save(using=self.db)
+
+        GROUP_MAPPING = {
+        'Investor': 'Investor',
+        'Analyst': 'Analyst',
+        }
+
+        group_name = GROUP_MAPPING.get(user_type)
+        if group_name:
+            group = Group.objects.get(name=group_name)
+            user.groups.add(group)
+
         return user
 
     def create_superuser(self, email, password, **extra_fields):

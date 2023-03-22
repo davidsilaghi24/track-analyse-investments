@@ -2,12 +2,14 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
-from ..models import Loan, Cashflow
+from ..models import Loan, Cashflow, User
 
 
 class LoanAPITestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.test_user = User.objects.create_user(email='testuser@example.com', password='testpassword', user_type='Investor')
+        self.client.force_authenticate(user=self.test_user)
         self.loan_data = {
             "identifier": "123e4567-e89b-12d3-a456-426614174000",
             "issue_date": "2023-01-01",
@@ -50,6 +52,8 @@ class LoanAPITestCase(TestCase):
 class CashflowAPITestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.test_user = User.objects.create_user(email='testuser@example.com', password='testpassword', user_type='Investor')
+        self.client.force_authenticate(user=self.test_user)
         self.loan = Loan.objects.create(**{
             "identifier": "123e4567-e89b-12d3-a456-426614174000",
             "issue_date": "2023-01-01",
@@ -79,3 +83,14 @@ class CashflowAPITestCase(TestCase):
         self.assertIsNotNone(self.loan.expected_irr)
 
     # Additional tests for other operations like list, retrieve, update and delete
+
+class TokenAPITestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.test_user = User.objects.create_user(email='testuser@example.com', password='testpassword', user_type='Investor')
+
+    def test_obtain_token(self):
+        response = self.client.post('/api/token/', {'email': 'testuser@example.com', 'password': 'testpassword'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)

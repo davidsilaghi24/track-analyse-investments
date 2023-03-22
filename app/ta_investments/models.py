@@ -1,6 +1,8 @@
 """
 Database models
 """
+import uuid
+from django.forms import ValidationError
 from pyxirr import xirr
 from decimal import Decimal
 from django.db import models
@@ -51,65 +53,59 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class Loan(models.Model):
-    identifier = models.CharField(max_length=100, unique=True)
+    identifier = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     issue_date = models.DateField()
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
-    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(9)])
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    rating = models.IntegerField(choices=[(i, i) for i in range(1, 10)])
     maturity_date = models.DateField()
-    total_expected_interest_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
-    invested_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    investment_date = models.DateField(null=True, blank=True)
-    expected_interest_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    total_expected_interest_amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    investment_date = models.DateField(blank=True, null=True)
+    invested_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    expected_interest_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    expected_irr = models.DecimalField(max_digits=10, decimal_places=6, blank=True, null=True)
+    realized_irr = models.DecimalField(max_digits=10, decimal_places=6, blank=True, null=True)
     is_closed = models.BooleanField(default=False)
-    expected_irr = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    realized_irr = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    def __str__(self):
-        return self.identifier
-
-    def calculate_expected_irr(self):
-        cashflows = [
-            (self.investment_date, -self.invested_amount),
-            (self.maturity_date, self.invested_amount + self.expected_interest_amount)
-        ]
-        return xirr(cashflows) * 100
-
-    def calculate_realized_irr(self, cashflows):
-        return xirr(cashflows) * 100
-
-    def check_is_closed(self, cashflows):
-        total_repayments = sum(amount for date, amount in cashflows if amount > 0)
-        expected_amount = self.invested_amount + self.expected_interest_amount
-        return total_repayments >= expected_amount
-
-    def save(self, *args, **kwargs):
-        if self.invested_amount is not None and self.investment_date is None:
-            funding_cashflow = self.cashflow_set.filter(type="FUNDING").first()
-            if funding_cashflow:
-                self.investment_date = funding_cashflow.reference_date
-                self.invested_amount = funding_cashflow.amount
-
-        if self.invested_amount is not None and self.expected_interest_amount is None:
+    def calculate_fields(self):
+        funding_cash_flow = self.cashflows.filter(type="FUNDING").first()
+        if funding_cash_flow:
+            self.investment_date = funding_cash_flow.reference_date
+            self.invested_amount = funding_cash_flow.amount
             self.expected_interest_amount = self.total_expected_interest_amount * (self.invested_amount / self.total_amount)
 
-        if self.invested_amount is not None and self.expected_irr is None and self.investment_date is not None:
-            self.expected_irr = self.calculate_expected_irr()
+            dates = [self.investment_date, self.maturity_date]
+            amounts = [-self.invested_amount, self.invested_amount + self.expected_interest_amount]
+            self.expected_irr = xirr(dates, amounts)
 
-        if not self.is_closed:
-            cashflows = [(cf.reference_date, cf.amount) for cf in self.cashflow_set.exclude(type="FUNDING")]
-            if cashflows:
-                self.is_closed = self.check_is_closed(cashflows)
-                if self.is_closed:
-                    self.realized_irr = self.calculate_realized_irr(cashflows)
+            self.is_closed = self.check_is_closed()
 
+            if self.is_closed:
+                realized_cashflows = [(cf.reference_date, cf.amount) for cf in self.cashflows.all()]
+                realized_dates = [cf[0] for cf in realized_cashflows]
+                realized_amounts = [cf[1] for cf in realized_cashflows]
+                self.realized_irr = xirr(realized_dates, realized_amounts)
+
+    def check_is_closed(self):
+        total_repaid_amount = sum([cf.amount for cf in self.cashflows.filter(type="REPAYMENT")])
+        expected_amount = self.invested_amount + self.expected_interest_amount
+        return total_repaid_amount >= expected_amount
+
+    def save(self, *args, **kwargs):
         super(Loan, self).save(*args, **kwargs)
 
-
 class Cashflow(models.Model):
-    loan_identifier = models.ForeignKey(Loan, on_delete=models.CASCADE)
+    TYPES = (
+        ("FUNDING", "Funding"),
+        ("REPAYMENT", "Repayment"),
+    )
+    loan_identifier = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name='cashflows', to_field='identifier')
+    type = models.CharField(choices=TYPES, max_length=20)
     reference_date = models.DateField()
-    type = models.CharField(max_length=20, choices=[("FUNDING", "Funding"), ("PRINCIPAL", "Principal Repayment"), ("INTEREST", "Interest Repayment")])
-    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
 
-    def __str__(self):
-        return f"{self.loan_identifier.identifier} - {self.type} - {self.reference_date}"
+    def save(self, *args, **kwargs):
+        super(Cashflow, self).save(*args, **kwargs)
+        loan = self.loan_identifier
+        loan.calculate_fields()
+        loan.save()

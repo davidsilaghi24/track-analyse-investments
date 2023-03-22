@@ -1,8 +1,9 @@
-# from django.urls import path
-# from ta_investments import views
+from django.urls import path
+from . import views
 
-# urlpatterns = [
-#     path('loans/', views.LoanListCreateView.as_view(), name='loans-list-create'),
-#     path('cashflows/', views.CashflowListCreateView.as_view(), name='cashflows-list-create'),
-#     path('cashflows/bulk-upload/', views.bulk_upload_cashflows, name='cashflows-bulk-upload'),
-# ]
+urlpatterns = [
+    path('loans/', views.LoanListCreateView.as_view(), name='loan-list-create'),
+    path('loans/<int:pk>/', views.LoanDetailView.as_view(), name='loan-detail'),
+    path('cashflows/', views.CashflowListCreateView.as_view(), name='cashflow-list-create'),
+    path('cashflows/<int:pk>/', views.CashflowDetailView.as_view(), name='cashflow-detail'),
+]

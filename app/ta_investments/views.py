@@ -1,4 +1,4 @@
-from rest_framework import generics
+from rest_framework import generics, permissions
 from rest_framework.filters import SearchFilter, OrderingFilter
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import Loan, Cashflow
@@ -10,6 +10,7 @@ class LoanListCreateView(generics.ListCreateAPIView):
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['identifier', 'issue_date', 'rating', 'maturity_date']
     ordering_fields = '__all__'
+    permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
         summary='List and create loans',
@@ -24,6 +25,7 @@ class LoanListCreateView(generics.ListCreateAPIView):
 class LoanDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Loan.objects.all()
     serializer_class = LoanSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(summary='Retrieve, update, or delete a loan')
     def get(self, request, *args, **kwargs):
@@ -35,6 +37,7 @@ class CashflowListCreateView(generics.ListCreateAPIView):
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['loan_identifier__identifier', 'reference_date', 'type']
     ordering_fields = '__all__'
+    permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
         summary='List and create cash flows',
@@ -49,6 +52,7 @@ class CashflowListCreateView(generics.ListCreateAPIView):
 class CashflowDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Cashflow.objects.all()
     serializer_class = CashflowSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(summary='Retrieve, update, or delete a cash flow')
     def get(self, request, *args, **kwargs):

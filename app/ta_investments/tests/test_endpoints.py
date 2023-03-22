@@ -22,7 +22,30 @@ class LoanAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Loan.objects.count(), 1)
 
-    # Additional tests for other operations like list, retrieve, update and delete
+    def test_list_loans(self):
+        response = self.client.get(reverse('loan-list-create'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_retrieve_loan(self):
+        loan = Loan.objects.create(**self.loan_data)
+        response = self.client.get(reverse('loan-detail', kwargs={'pk': loan.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['identifier'], loan.identifier)
+
+    def test_update_loan(self):
+        loan = Loan.objects.create(**self.loan_data)
+        updated_data = self.loan_data.copy()
+        updated_data['rating'] = 5
+        response = self.client.put(reverse('loan-detail', kwargs={'pk': loan.pk}), updated_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        loan.refresh_from_db()
+        self.assertEqual(loan.rating, 5)
+
+    def test_delete_loan(self):
+        loan = Loan.objects.create(**self.loan_data)
+        response = self.client.delete(reverse('loan-detail', kwargs={'pk': loan.pk}))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Loan.objects.count(), 0)
 
 class CashflowAPITestCase(TestCase):
     def setUp(self):

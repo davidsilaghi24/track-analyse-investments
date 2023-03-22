@@ -1,6 +1,3 @@
-"""
-Django admin customization
-"""
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -11,7 +8,7 @@ class UserAdmin(BaseUserAdmin):
     Define the admin pages for users.
     """
     ordering = ['id']
-    list_display = ['email', 'name']
+    list_display = ['email', 'name', 'is_active', 'is_staff', 'is_superuser', 'display_groups']
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         (
@@ -21,6 +18,7 @@ class UserAdmin(BaseUserAdmin):
                     'is_active',
                     'is_staff',
                     'is_superuser',
+                    'groups',
                 )
             }
         ),
@@ -37,9 +35,15 @@ class UserAdmin(BaseUserAdmin):
                 'is_active',
                 'is_staff',
                 'is_superuser',
-
             )
         }),
     )
+
+    # Define a custom method to display the groups as a comma-separated list
+    def display_groups(self, obj):
+        return ", ".join([group.name for group in obj.groups.all()])
+
+    # Set a short description for the display_groups column
+    display_groups.short_description = 'Groups'
 
 admin.site.register(models.User, UserAdmin)

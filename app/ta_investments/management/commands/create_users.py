@@ -3,6 +3,7 @@ import string
 import secrets
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.contrib.auth.models import Group
 from ta_investments.models import User
 
 def generate_password(length):
@@ -24,6 +25,8 @@ class Command(BaseCommand):
                 password=investor_password,
                 user_type="Investor",
             )
+            investor_group = Group.objects.get(name="Investor")
+            investor.groups.add(investor_group)
             investor.save()
             self.stdout.write(self.style.SUCCESS("Investor user created."))
 
@@ -43,6 +46,8 @@ class Command(BaseCommand):
                 password=analyst_password,
                 user_type="Analyst",
             )
+            analyst_group = Group.objects.get(name="Analyst")
+            analyst.groups.add(analyst_group)
             analyst.save()
             self.stdout.write(self.style.SUCCESS("Analyst user created."))
 

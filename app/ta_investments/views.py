@@ -1,9 +1,23 @@
-from rest_framework import generics, permissions
+import csv
+import io
+
+from rest_framework import views, response, status, generics, permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.parsers import FileUploadParser
+from rest_framework import generics, permissions, status
+import csv
+import io
+
 from rest_framework.filters import SearchFilter, OrderingFilter
-from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import Loan, Cashflow
 from .permissions import IsInvestor, IsAnalyst
 from .serializers import LoanSerializer, CashflowSerializer
+from django.core.exceptions import ValidationError
+from rest_framework import permissions
+from rest_framework.parsers import MultiPartParser
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+
 
 class LoanListCreateView(generics.ListCreateAPIView):
     queryset = Loan.objects.all()
@@ -50,6 +64,7 @@ class CashflowListCreateView(generics.ListCreateAPIView):
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
+
 class CashflowDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Cashflow.objects.all()
     serializer_class = CashflowSerializer
@@ -58,3 +73,60 @@ class CashflowDetailView(generics.RetrieveUpdateDestroyAPIView):
     @extend_schema(summary='Retrieve, update, or delete a cash flow')
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+class LoansCSVUploadView(APIView):
+    parser_classes = [MultiPartParser]
+
+    @extend_schema(
+        summary='Upload Loans CSV file',
+        operation_id='upload_loans_csv',
+        request=OpenApiTypes.BINARY,
+        responses={201: 'Loans CSV file uploaded successfully'}
+    )
+    def post(self, request, *args, **kwargs):
+        csv_file = request.FILES.get('file')
+
+        # check if file was uploaded
+        if not csv_file:
+            return Response({'error': 'CSV file is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # check if file extension is valid
+        if not csv_file.name.endswith('.csv'):
+            return Response({'error': 'Invalid file format. Please upload a CSV file.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # process the CSV file
+        csv_content = csv_file.read().decode('utf-8')
+        csv_data = csv.DictReader(io.StringIO(csv_content))
+
+        # your code here to process the csv data for Loans
+
+        return Response({'message': 'Loans CSV file uploaded successfully'}, status=status.HTTP_201_CREATED)
+
+
+class CashflowCSVUploadView(APIView):
+    parser_classes = [MultiPartParser]
+
+    @extend_schema(
+        summary='Upload Cashflow CSV file',
+        operation_id='upload_cashflow_csv',
+        request=OpenApiTypes.BINARY,
+        responses={201: 'Cashflow CSV file uploaded successfully'}
+    )
+    def post(self, request, *args, **kwargs):
+        csv_file = request.FILES.get('file')
+
+        # check if file was uploaded
+        if not csv_file:
+            return Response({'error': 'CSV file is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # check if file extension is valid
+        if not csv_file.name.endswith('.csv'):
+            return Response({'error': 'Invalid file format. Please upload a CSV file.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # process the CSV file
+        csv_content = csv_file.read().decode('utf-8')
+        csv_data = csv.DictReader(io.StringIO(csv_content))
+
+        # your code here to process the csv data for Cashflow
+
+        return Response({'message': 'Cashflow CSV file uploaded successfully'}, status=status.HTTP_201_CREATED)

@@ -14,3 +14,9 @@ class LoanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Loan
         fields = '__all__'
+
+class LoanCsvUploadSerializer(serializers.Serializer):
+    file = serializers.FileField()
+
+class CashFlowCsvUploadSerializer(serializers.Serializer):
+    file = serializers.FileField()

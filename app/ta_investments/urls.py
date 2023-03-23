@@ -2,8 +2,8 @@ from django.urls import path
 
 from .views import (CashflowCSVUploadView, CashflowDetailView,
                     CashflowListCreateView, CreateRepaymentView,
-                    LoanDetailView, LoanListCreateView, LoansCSVUploadView,
-                    InvestmentStatisticsView)
+                    InvestmentStatisticsView, LoanDetailView,
+                    LoanListCreateView, LoansCSVUploadView)
 
 urlpatterns = [
     path(
@@ -35,7 +35,8 @@ urlpatterns = [
         "repayments/",
         CreateRepaymentView.as_view(),
         name="create_repayment"),
-    path("investment-statistics/",
-         InvestmentStatisticsView.as_view(),
-         name="investment_statistics"),
+    path(
+        "investment-statistics/",
+        InvestmentStatisticsView.as_view(),
+        name="investment_statistics"),
 ]

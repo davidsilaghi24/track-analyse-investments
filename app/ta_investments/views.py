@@ -1,6 +1,5 @@
 import csv
 import io
-from .utils import calculate_investment_statistics
 
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
@@ -10,10 +9,13 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .filters import CashFlowFilter, LoanFilter
 from .models import Cashflow, Loan
+from .filters import CashFlowFilter, LoanFilter
 from .permissions import IsAnalyst, IsInvestor
-from .serializers import CashflowSerializer, InvestmentStatisticsSerializer, LoanSerializer
+from .serializers import (CashflowSerializer, InvestmentStatisticsSerializer,
+                          LoanSerializer)
+from .utils import calculate_investment_statistics
+from django.views.decorators.cache import cache_page
 
 
 class LoanListCreateView(generics.ListCreateAPIView):
@@ -240,16 +242,31 @@ class CreateRepaymentView(generics.CreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+from django.core.cache import cache
+from django.conf import settings
+
 class InvestmentStatisticsView(generics.ListAPIView):
     serializer_class = InvestmentStatisticsSerializer
     permission_classes = [IsInvestor, IsAnalyst]
 
     @extend_schema(
         description="Returns investment statistics for all loans and cashflows",
-        responses={200: InvestmentStatisticsSerializer},
+        responses={
+            200: InvestmentStatisticsSerializer},
     )
     def get(self, request, *args, **kwargs):
+        # Try to get investment statistics from cache
+        investment_statistics = cache.get(settings.INVESTMENT_STATISTICS_CACHE_KEY)
+
+        if investment_statistics is not None:
+            return Response(investment_statistics, status=status.HTTP_200_OK)
+
+        # If the cache is empty, calculate investment statistics
         loans = Loan.objects.all()
         cashflows = Cashflow.objects.all()
         investment_statistics = calculate_investment_statistics(loans, cashflows)
+
+        # Store the statistics in the cache for 5 minutes
+        cache.set(settings.INVESTMENT_STATISTICS_CACHE_KEY, investment_statistics, 300)
+
         return Response(investment_statistics, status=status.HTTP_200_OK)

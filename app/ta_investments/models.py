@@ -6,10 +6,10 @@ from decimal import Decimal
 from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         Group, PermissionsMixin)
 from django.db import models
-from django.db.models.signals import post_migrate
+from django.db.models.signals import post_migrate, post_save
 from django.dispatch import receiver
+from django.core.cache import cache
 from pyxirr import xirr
-
 
 @receiver(post_migrate)
 def create_groups(sender, **kwargs):
@@ -168,3 +168,10 @@ class Cashflow(models.Model):
 
     # stuff I don't have time to immplement: empty the Loan calculated fields
     # if Cashflow object is deleted.
+
+@receiver(post_save, sender=Loan)
+@receiver(post_save, sender=Cashflow)
+def invalidate_cache(sender, instance, **kwargs):
+    from django.core.cache import cache
+    from django.conf import settings
+    cache.delete(settings.INVESTMENT_STATISTICS_CACHE_KEY)

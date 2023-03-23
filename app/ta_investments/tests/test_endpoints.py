@@ -1,10 +1,12 @@
 import tempfile
+
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.core.cache import cache
+from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -320,11 +322,13 @@ class RepaymentAPITestCase(TestCase):
 
 
 class InvestmentStatisticsViewTestCase(TestCase):
-
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="testuser", password="testpass")
-        self.client.login(username="testuser", password="testpass")
+        self.client = APIClient()
+        self.test_user = User.objects.create_user(
+            email="testuser@example.com",
+            password="testpassword",
+            user_type="Investor")
+        self.client.force_authenticate(user=self.test_user)
 
         # Create a new Loan instance
         self.loan_data = {
@@ -347,7 +351,37 @@ class InvestmentStatisticsViewTestCase(TestCase):
         self.cashflow = Cashflow.objects.create(**self.cashflow_data)
 
     def test_investment_statistics_view(self):
+        # Ensure that the cache is empty
+        self.assertIsNone(cache.get('investment_statistics'))
+
         url = reverse("investment_statistics")
         response = self.client.get(url)
+
+        # Assert that the response is successful and the data is correct
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertContains(response, "Investment Statistics")
+
+        # Ensure that the cache has been set
+        cached_data = cache.get('investment_statistics')
+        self.assertIsNotNone(cached_data)
+
+        # Create a new Loan and Cashflow
+        loan_data = {
+            "identifier": "L002",
+            "issue_date": date(2022, 1, 1),
+            "total_amount": Decimal("10000"),
+            "rating": 5,
+            "maturity_date": date(2023, 1, 1),
+            "total_expected_interest_amount": Decimal("1000"),
+        }
+        loan = Loan.objects.create(**loan_data)
+
+        cashflow_data = {
+            "loan_identifier": loan,
+            "type": "FUNDING",
+            "reference_date": date(2022, 1, 1),
+            "amount": Decimal("10000"),
+        }
+        cashflow = Cashflow.objects.create(**cashflow_data)
+
+        # Ensure that the cache has been invalidated
+        self.assertIsNone(cache.get('investment_statistics'))

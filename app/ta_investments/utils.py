@@ -1,10 +1,11 @@
 from decimal import Decimal
 from typing import Dict, List
 
-from .models import Loan, Cashflow
+from .models import Cashflow, Loan
 
 
-def calculate_investment_statistics(loans: List[Loan], cashflows: List[Cashflow]) -> Dict[str, Decimal]:
+def calculate_investment_statistics(
+        loans: List[Loan], cashflows: List[Cashflow]) -> Dict[str, Decimal]:
     total_invested = Decimal(0)
     total_returned = Decimal(0)
     total_interest_earned = Decimal(0)

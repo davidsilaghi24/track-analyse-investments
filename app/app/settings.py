@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "rest_framework_simplejwt",
-]
+    "redis",
+    ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -147,6 +148,8 @@ REST_FRAMEWORK = {
 CELERY_BROKER_URL = "redis://redis:6379"
 
 CELERY_RESULT_BACKEND = "redis://redis:6379"
+
+INVESTMENT_STATISTICS_CACHE_KEY = 'investment_statistics'
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),

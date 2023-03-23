@@ -2,25 +2,24 @@
 Database models
 """
 import uuid
-from django.forms import ValidationError
-from pyxirr import xirr
 from decimal import Decimal
+
+from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
+                                        Group, PermissionsMixin)
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.utils import timezone
-from django.contrib.auth.models import (
-    AbstractBaseUser,
-    BaseUserManager,
-    PermissionsMixin
-)
-from django.dispatch import receiver
-from django.contrib.auth.models import Group
 from django.db.models.signals import post_migrate
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.dispatch import receiver
+from django.forms import ValidationError
+from django.utils import timezone
+from pyxirr import xirr
+
 
 @receiver(post_migrate)
 def create_groups(sender, **kwargs):
-    Group.objects.get_or_create(name='Investor')
-    Group.objects.get_or_create(name='Analyst')
+    Group.objects.get_or_create(name="Investor")
+    Group.objects.get_or_create(name="Analyst")
+
 
 class UserManager(BaseUserManager):
     """Manager for users."""
@@ -30,14 +29,14 @@ class UserManager(BaseUserManager):
         Create, save and return a new user
         """
         if not email:
-            raise ValueError('User must have an email address.')
+            raise ValueError("User must have an email address.")
         user = self.model(email=self.normalize_email(email), user_type=user_type, **extra_fields)
         user.set_password(password)
         user.save(using=self.db)
 
         GROUP_MAPPING = {
-        'Investor': 'Investor',
-        'Analyst': 'Analyst',
+            "Investor": "Investor",
+            "Analyst": "Analyst",
         }
 
         group_name = GROUP_MAPPING.get(user_type)
@@ -48,34 +47,32 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('user_type', 'Admin')  # Add this line to set a default user_type
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        # Add this line to set a default user_type
+        extra_fields.setdefault("user_type", "Admin")
 
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
 
         return self.create_user(email, password, **extra_fields)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
     """User in the system."""
-    USER_TYPES = (
-        ('Investor', 'Investor'),
-        ('Analyst', 'Analyst'),
-        ('Admin', 'Admin')
-    )
+
+    USER_TYPES = (("Investor", "Investor"), ("Analyst", "Analyst"), ("Admin", "Admin"))
 
     email = models.EmailField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
-    user_type = models.CharField(max_length=20, choices=USER_TYPES, default='Investor')
+    user_type = models.CharField(max_length=20, choices=USER_TYPES, default="Investor")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
     objects = UserManager()
-    USERNAME_FIELD = 'email'
+    USERNAME_FIELD = "email"
 
 
 class Loan(models.Model):
@@ -98,10 +95,15 @@ class Loan(models.Model):
         if funding_cash_flow:
             self.investment_date = funding_cash_flow.reference_date
             self.invested_amount = funding_cash_flow.amount
-            self.expected_interest_amount = Decimal(self.total_expected_interest_amount) * (Decimal(self.invested_amount) / Decimal(self.total_amount))
+            self.expected_interest_amount = Decimal(self.total_expected_interest_amount) * (
+                Decimal(self.invested_amount) / Decimal(self.total_amount)
+            )
 
             dates = [self.investment_date, self.maturity_date]
-            amounts = [-self.invested_amount, self.invested_amount + self.expected_interest_amount]
+            amounts = [
+                -self.invested_amount,
+                self.invested_amount + self.expected_interest_amount,
+            ]
             self.expected_irr = xirr(dates, amounts)
 
             self.is_closed = self.check_is_closed()
@@ -128,12 +130,13 @@ class Loan(models.Model):
     def save(self, *args, **kwargs):
         super(Loan, self).save(*args, **kwargs)
 
+
 class Cashflow(models.Model):
     TYPES = (
         ("FUNDING", "Funding"),
         ("REPAYMENT", "Repayment"),
     )
-    loan_identifier = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name='cashflows', to_field='identifier')
+    loan_identifier = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name="cashflows", to_field="identifier")
     type = models.CharField(choices=TYPES, max_length=20)
     reference_date = models.DateField()
     amount = models.DecimalField(max_digits=10, decimal_places=2)

@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ta_investments', '0006_alter_user_user_type'),
+        ("ta_investments", "0006_alter_user_user_type"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='loan',
-            name='identifier',
+            model_name="loan",
+            name="identifier",
             field=models.CharField(editable=False, max_length=100, unique=True),
         ),
     ]

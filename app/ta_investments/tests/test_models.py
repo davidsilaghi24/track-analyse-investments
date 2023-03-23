@@ -1,9 +1,10 @@
-from decimal import Decimal
-from django.test import TestCase
 from datetime import date, timedelta
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
+from django.test import TestCase
 from django.utils import timezone
-from ta_investments.models import Loan, Cashflow, User
+from ta_investments.models import Cashflow, Loan, User
 
 
 class UserModelTests(TestCase):
@@ -18,11 +19,7 @@ class UserModelTests(TestCase):
         email = "test@example.com"
         password = "testpass123"
         user_type = "Investor"
-        user = User.objects.create_user(
-            email=email,
-            password=password,
-            user_type=user_type
-        )
+        user = User.objects.create_user(email=email, password=password, user_type=user_type)
         self.assertEqual(user.email, email)
         self.assertEqual(user.user_type, user_type)
         self.assertTrue(user.check_password(password))
@@ -32,15 +29,11 @@ class UserModelTests(TestCase):
         Test email is normalized for new users.
         """
         sample_emails = [
-            ['test1@EXAMPLE.com', 'test1@example.com'],
-            ['Test2@Example.com', 'Test2@example.com'],
+            ["test1@EXAMPLE.com", "test1@example.com"],
+            ["Test2@Example.com", "Test2@example.com"],
         ]
         for email, expected in sample_emails:
-            user = User.objects.create_user(
-                email=email,
-                password='testpass123',
-                user_type='Investor'
-                )
+            user = User.objects.create_user(email=email, password="testpass123", user_type="Investor")
             self.assertEqual(user.email, expected)
 
     def test_new_user_without_email_raiser_error(self):
@@ -54,11 +47,7 @@ class UserModelTests(TestCase):
         """
         Test creating superuser.
         """
-        user = User.objects.create_superuser(
-            'test@example.com',
-            'test123',
-            user_type='Admin'
-        )
+        user = User.objects.create_superuser("test@example.com", "test123", user_type="Admin")
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
 
@@ -67,8 +56,8 @@ class UserModelTests(TestCase):
         Test the string representation of the User model.
         """
         user = User.objects.create_user(
-            email='test@example.com',
-            password='testpass123',
-            user_type='Investor',
+            email="test@example.com",
+            password="testpass123",
+            user_type="Investor",
         )
         self.assertEqual(str(user), user.email)

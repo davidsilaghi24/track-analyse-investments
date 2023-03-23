@@ -1,5 +1,6 @@
-from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, Permission
+from django.core.management.base import BaseCommand
+
 
 class Command(BaseCommand):
     help = "Create Investor and Analyst groups if they don't exist."
@@ -15,8 +16,7 @@ class Command(BaseCommand):
         if not Group.objects.filter(name="Analyst").exists():
             analyst_group = Group.objects.create(name="Analyst")
             analyst_permissions = Permission.objects.filter(
-                content_type__app_label="ta_investments",
-                codename__startswith="view_"
+                content_type__app_label="ta_investments", codename__startswith="view_"
             )
             analyst_group.permissions.set(analyst_permissions)
             analyst_group.save()

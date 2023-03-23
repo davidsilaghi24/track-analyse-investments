@@ -4,15 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ta_investments', '0004_alter_loan_rating'),
+        ("ta_investments", "0004_alter_loan_rating"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='user',
-            name='user_type',
-            field=models.CharField(choices=[('Investor', 'Investor'), ('Analyst', 'Analyst')], default='Investor', max_length=20),
+            model_name="user",
+            name="user_type",
+            field=models.CharField(
+                choices=[("Investor", "Investor"), ("Analyst", "Analyst")],
+                default="Investor",
+                max_length=20,
+            ),
         ),
     ]

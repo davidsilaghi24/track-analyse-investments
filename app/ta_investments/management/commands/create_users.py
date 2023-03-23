@@ -1,14 +1,17 @@
 import os
-import string
 import secrets
+import string
+
 from django.conf import settings
-from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group
+from django.core.management.base import BaseCommand
 from ta_investments.models import User
+
 
 def generate_password(length):
     characters = string.ascii_letters + string.digits + string.punctuation
-    return ''.join(secrets.choice(characters) for _ in range(length))
+    return "".join(secrets.choice(characters) for _ in range(length))
+
 
 class Command(BaseCommand):
     help = "Create standard Investor and Analyst users if they don't exist."

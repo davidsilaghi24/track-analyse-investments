@@ -144,7 +144,7 @@ class CashflowCSVUploadView(APIView):
                     cashflow = Cashflow.objects.create(
                         loan_identifier=loan,
                         reference_date=row['reference_date'],
-                        type=row['type'],
+                        type=row['type'].upper(),
                         amount=row['amount']
                     )
                 else:

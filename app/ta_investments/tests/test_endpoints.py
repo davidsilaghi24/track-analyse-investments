@@ -179,5 +179,12 @@ class CsvUploadViewTestCase(TestCase):
         cashflow = Cashflow.objects.first()
         self.assertEqual(cashflow.loan_identifier.identifier, 'L101')
         self.assertEqual(cashflow.reference_date, date(2021, 5, 1))
-        self.assertEqual(cashflow.type, 'Funding')
+        self.assertEqual(cashflow.type, 'FUNDING')
         self.assertEqual(cashflow.amount, Decimal('-100000.00'))
+
+        # assert that the loan object has the expected calculated fields populated
+        loan.refresh_from_db()
+        self.assertIsNotNone(loan.investment_date)
+        self.assertIsNotNone(loan.invested_amount)
+        self.assertIsNotNone(loan.expected_interest_amount)
+        self.assertIsNotNone(loan.expected_irr)

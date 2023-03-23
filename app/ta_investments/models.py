@@ -113,8 +113,16 @@ class Loan(models.Model):
                 self.realized_irr = xirr(realized_dates, realized_amounts)
 
     def check_is_closed(self):
-        total_repaid_amount = sum([cf.amount for cf in self.cashflows.filter(type="REPAYMENT")])
-        expected_amount = self.invested_amount + self.expected_interest_amount
+        funding_cash_flow = self.cashflows.filter(type="Funding").first()
+        if not funding_cash_flow:
+            return False
+
+        repayment_cash_flow = self.cashflows.filter(type="Repayment").first()
+        if not repayment_cash_flow:
+            return False
+
+        total_repaid_amount = sum([cf.amount for cf in self.cashflows.filter(type="Repayment")])
+        expected_amount = Decimal(funding_cash_flow.amount) * -1 + self.expected_interest_amount
         return total_repaid_amount >= expected_amount
 
     def save(self, *args, **kwargs):
@@ -135,3 +143,6 @@ class Cashflow(models.Model):
         loan = self.loan_identifier
         loan.calculate_fields()
         loan.save()
+
+    # stuff I don't have time to immplement: empty the Loan calculated fields
+    # if Cashflow object is deleted.

@@ -98,8 +98,18 @@ class LoansCSVUploadView(APIView):
         csv_content = csv_file.read().decode('utf-8')
         csv_data = csv.DictReader(io.StringIO(csv_content))
 
-        # your code here to process the csv data for Loans
-
+        for row in csv_data:
+            if list(row.keys()) == ['identifier', 'issue_date', 'total_amount', 'rating', 'maturity_date', 'total_expected_interest_amount']:
+                loan = Loan.objects.create(
+                    identifier=row['identifier'],
+                    issue_date=row['issue_date'],
+                    total_amount=row['total_amount'],
+                    rating=row['rating'],
+                    maturity_date=row['maturity_date'],
+                    total_expected_interest_amount=row['total_expected_interest_amount']
+                )
+            else:
+                return Response({'error': str('Wrong fields loans.csv file')}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'message': 'Loans CSV file uploaded successfully'}, status=status.HTTP_201_CREATED)
 
 
@@ -127,6 +137,19 @@ class CashflowCSVUploadView(APIView):
         csv_content = csv_file.read().decode('utf-8')
         csv_data = csv.DictReader(io.StringIO(csv_content))
 
-        # your code here to process the csv data for Cashflow
+        for row in csv_data:
+            if list(row.keys()) == ['loan_identifier' ,'reference_date', 'type', 'amount']:
+                loan = Loan.objects.filter(identifier=row['loan_identifier']).first()
+                if loan:
+                    cashflow = Cashflow.objects.create(
+                        loan_identifier=loan,
+                        reference_date=row['reference_date'],
+                        type=row['type'],
+                        amount=row['amount']
+                    )
+                else:
+                    return Response({'error': 'Loan with identifier {} not found'.format(row['loan_identifier'])}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': str('Wrong fields loans.csv file')}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'message': 'Cashflow CSV file uploaded successfully'}, status=status.HTTP_201_CREATED)

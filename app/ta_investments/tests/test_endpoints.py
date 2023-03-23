@@ -1,5 +1,7 @@
 import tempfile
 from pathlib import Path
+from datetime import date
+from decimal import Decimal
 from django.urls import reverse
 from django.test import TestCase
 from rest_framework import status
@@ -14,7 +16,7 @@ class LoanAPITestCase(TestCase):
         self.test_user = User.objects.create_user(email='testuser@example.com', password='testpassword', user_type='Investor')
         self.client.force_authenticate(user=self.test_user)
         self.loan_data = {
-            "identifier": "123e4567-e89b-12d3-a456-426614174000",
+            "identifier": "L103",
             "issue_date": "2023-01-01",
             "rating": 6,
             "maturity_date": "2023-12-31",
@@ -58,7 +60,7 @@ class CashflowAPITestCase(TestCase):
         self.test_user = User.objects.create_user(email='testuser@example.com', password='testpassword', user_type='Investor')
         self.client.force_authenticate(user=self.test_user)
         self.loan = Loan.objects.create(**{
-            "identifier": "123e4567-e89b-12d3-a456-426614174000",
+            "identifier": "L101",
             "issue_date": "2023-01-01",
             "rating": 6,
             "maturity_date": "2023-12-31",
@@ -119,7 +121,7 @@ class AnalystCannotCreateLoanTestCase(TestCase):
         self.analyst_user = User.objects.create_user(email='analyst@example.com', password='testpassword', user_type='Analyst')
         self.client.force_authenticate(user=self.analyst_user)
         self.loan_data = {
-            "identifier": "123e4567-e89b-12d3-a456-426614174000",
+            "identifier": "L104",
             "issue_date": "2023-01-01",
             "rating": 6,
             "maturity_date": "2023-12-31",
@@ -155,13 +157,27 @@ class CsvUploadViewTestCase(TestCase):
         self.client.force_authenticate(user=self.test_user)
 
     @override_settings(MEDIA_ROOT=tempfile.gettempdir())
-    def test_upload_loan_csv(self):
+    def test_upload_csv_files(self):
         with open(self.loan_csv, 'rb') as f:
             response = self.client.post('/api/ta_investments/upload/loan-csv/', {'file': f}, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    @override_settings(MEDIA_ROOT=tempfile.gettempdir())
-    def test_upload_cashflow_csv(self):
+        # assert that a loan object was created with the expected values
+        loan = Loan.objects.first()
+        self.assertEqual(loan.identifier, 'L101')
+        self.assertEqual(loan.issue_date, date(2021, 5, 1))
+        self.assertEqual(loan.total_amount, Decimal('200000'))
+        self.assertEqual(loan.rating, 1)
+        self.assertEqual(loan.maturity_date, date(2021, 8, 1))
+        self.assertEqual(loan.total_expected_interest_amount, Decimal('80'))
+
         with open(self.cashflow_csv, 'rb') as f:
             response = self.client.post('/api/ta_investments/upload/cashflow-csv/', {'file': f}, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # assert that a cashflow object was created with the expected values
+        cashflow = Cashflow.objects.first()
+        self.assertEqual(cashflow.loan_identifier.identifier, 'L101')
+        self.assertEqual(cashflow.reference_date, date(2021, 5, 1))
+        self.assertEqual(cashflow.type, 'Funding')
+        self.assertEqual(cashflow.amount, Decimal('-100000.00'))

@@ -79,7 +79,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class Loan(models.Model):
-    identifier = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    identifier = models.CharField(max_length=100, unique=True, editable=False)
     issue_date = models.DateField()
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     rating = models.IntegerField(choices=[(i, i) for i in range(1, 10)])

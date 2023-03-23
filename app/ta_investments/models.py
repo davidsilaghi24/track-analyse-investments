@@ -5,11 +5,12 @@ from decimal import Decimal
 
 from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         Group, PermissionsMixin)
+from django.core.cache import cache
 from django.db import models
 from django.db.models.signals import post_migrate, post_save
 from django.dispatch import receiver
-from django.core.cache import cache
 from pyxirr import xirr
+
 
 @receiver(post_migrate)
 def create_groups(sender, **kwargs):
@@ -67,8 +68,11 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     """User in the system."""
 
-    USER_TYPES = (("Investor", "Investor"),
-                  ("Analyst", "Analyst"), ("Admin", "Admin"))
+    USER_TYPES = (
+        ("Investor", "Investor"),
+        ("Analyst", "Analyst"),
+        ("Admin", "Admin"),
+    )
 
     email = models.EmailField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
@@ -155,7 +159,8 @@ class Cashflow(models.Model):
         Loan,
         on_delete=models.CASCADE,
         related_name="cashflows",
-        to_field="identifier")
+        to_field="identifier",
+    )
     type = models.CharField(choices=TYPES, max_length=20)
     reference_date = models.DateField()
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -169,9 +174,11 @@ class Cashflow(models.Model):
     # stuff I don't have time to immplement: empty the Loan calculated fields
     # if Cashflow object is deleted.
 
+
 @receiver(post_save, sender=Loan)
 @receiver(post_save, sender=Cashflow)
 def invalidate_cache(sender, instance, **kwargs):
-    from django.core.cache import cache
     from django.conf import settings
+    from django.core.cache import cache
+
     cache.delete(settings.INVESTMENT_STATISTICS_CACHE_KEY)

@@ -1,6 +1,5 @@
-import csv
-import io
-
+from django.conf import settings
+from django.core.cache import cache
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
 from rest_framework import generics, status
@@ -9,13 +8,13 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Cashflow, Loan
 from .filters import CashFlowFilter, LoanFilter
+from .models import Cashflow, Loan
 from .permissions import IsAnalyst, IsInvestor
 from .serializers import (CashflowSerializer, InvestmentStatisticsSerializer,
                           LoanSerializer)
+from .tasks import process_cashflow_csv, process_loans_csv
 from .utils import calculate_investment_statistics
-from django.views.decorators.cache import cache_page
 
 
 class LoanListCreateView(generics.ListCreateAPIView):
@@ -33,7 +32,8 @@ class LoanListCreateView(generics.ListCreateAPIView):
         parameters=[
             OpenApiParameter(
                 name="search",
-                description="Search loans by identifier, issue_date, rating, or maturity_date",
+                description="Search loans by identifier, issue_date, \
+                    rating, or maturity_date",
                 required=False,
                 type=str,
             ),
@@ -74,7 +74,8 @@ class CashflowListCreateView(generics.ListCreateAPIView):
         parameters=[
             OpenApiParameter(
                 name="search",
-                description="Search cash flows by loan_identifier, reference_date, or type",
+                description="Search cash flows by loan_identifier, \
+                    reference_date, or type",
                 required=False,
                 type=str,
             ),
@@ -114,8 +115,10 @@ class LoansCSVUploadView(APIView):
 
         # check if file was uploaded
         if not csv_file:
-            return Response({"error": "CSV file is required"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "CSV file is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # check if file extension is valid
         if not csv_file.name.endswith(".csv"):
@@ -125,34 +128,11 @@ class LoansCSVUploadView(APIView):
             )
 
         # process the CSV file
-        csv_content = csv_file.read().decode("utf-8")
-        csv_data = csv.DictReader(io.StringIO(csv_content))
+        process_loans_csv.delay(csv_file.read().decode("utf-8"))
 
-        for row in csv_data:
-            if list(row.keys()) == [
-                "identifier",
-                "issue_date",
-                "total_amount",
-                "rating",
-                "maturity_date",
-                "total_expected_interest_amount",
-            ]:
-                Loan.objects.create(
-                    identifier=row["identifier"],
-                    issue_date=row["issue_date"],
-                    total_amount=row["total_amount"],
-                    rating=row["rating"],
-                    maturity_date=row["maturity_date"],
-                    total_expected_interest_amount=row["total_expected_interest_amount"],
-                )
-            else:
-                return Response(
-                    {"error": str("Wrong fields loans.csv file")},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
         return Response(
-            {"message": "Loans CSV file uploaded successfully"},
-            status=status.HTTP_201_CREATED,
+            {"message": "Loans CSV file is being processed"},
+            status=status.HTTP_202_ACCEPTED,
         )
 
 
@@ -170,8 +150,10 @@ class CashflowCSVUploadView(APIView):
 
         # check if file was uploaded
         if not csv_file:
-            return Response({"error": "CSV file is required"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "CSV file is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # check if file extension is valid
         if not csv_file.name.endswith(".csv"):
@@ -180,34 +162,11 @@ class CashflowCSVUploadView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # process the CSV file
+        # read the CSV file
         csv_content = csv_file.read().decode("utf-8")
-        csv_data = csv.DictReader(io.StringIO(csv_content))
 
-        for row in csv_data:
-            if list(row.keys()) == [
-                "loan_identifier",
-                "reference_date",
-                "type",
-                "amount",
-            ]:
-                loan = Loan.objects.filter(
-                    identifier=row["loan_identifier"]).first()
-                if loan:
-                    Cashflow.objects.create(
-                        loan_identifier=loan,
-                        reference_date=row["reference_date"],
-                        type=row["type"].upper(),
-                        amount=row["amount"],
-                    )
-                else:
-                    return Response({"error": "Loan with identifier {} not found".format(
-                        row["loan_identifier"])}, status=status.HTTP_400_BAD_REQUEST, )
-            else:
-                return Response(
-                    {"error": str("Wrong fields loans.csv file")},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        # process the CSV file asynchronously using Celery
+        process_cashflow_csv.delay(csv_content)
 
         return Response(
             {"message": "Cashflow CSV file uploaded successfully"},
@@ -242,9 +201,6 @@ class CreateRepaymentView(generics.CreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-from django.core.cache import cache
-from django.conf import settings
-
 class InvestmentStatisticsView(generics.ListAPIView):
     serializer_class = InvestmentStatisticsSerializer
     permission_classes = [IsInvestor, IsAnalyst]
@@ -256,7 +212,8 @@ class InvestmentStatisticsView(generics.ListAPIView):
     )
     def get(self, request, *args, **kwargs):
         # Try to get investment statistics from cache
-        investment_statistics = cache.get(settings.INVESTMENT_STATISTICS_CACHE_KEY)
+        investment_statistics = cache.get(
+            settings.INVESTMENT_STATISTICS_CACHE_KEY)
 
         if investment_statistics is not None:
             return Response(investment_statistics, status=status.HTTP_200_OK)
@@ -264,9 +221,14 @@ class InvestmentStatisticsView(generics.ListAPIView):
         # If the cache is empty, calculate investment statistics
         loans = Loan.objects.all()
         cashflows = Cashflow.objects.all()
-        investment_statistics = calculate_investment_statistics(loans, cashflows)
+        investment_statistics = calculate_investment_statistics(
+            loans, cashflows)
 
         # Store the statistics in the cache for 5 minutes
-        cache.set(settings.INVESTMENT_STATISTICS_CACHE_KEY, investment_statistics, 300)
+        cache.set(
+            settings.INVESTMENT_STATISTICS_CACHE_KEY,
+            investment_statistics,
+            300,
+        )
 
         return Response(investment_statistics, status=status.HTTP_200_OK)

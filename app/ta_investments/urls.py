@@ -17,15 +17,18 @@ urlpatterns = [
     path(
         "cashflows/",
         CashflowListCreateView.as_view(),
-        name="cashflow-list-create"),
+        name="cashflow-list-create",
+    ),
     path(
         "cashflows/<int:pk>/",
         CashflowDetailView.as_view(),
-        name="cashflow-detail"),
+        name="cashflow-detail",
+    ),
     path(
         "upload/loan-csv/",
         LoansCSVUploadView.as_view(),
-        name="loan_csv_upload"),
+        name="loan_csv_upload",
+    ),
     path(
         "upload/cashflow-csv/",
         CashflowCSVUploadView.as_view(),
@@ -38,5 +41,6 @@ urlpatterns = [
     path(
         "investment-statistics/",
         InvestmentStatisticsView.as_view(),
-        name="investment_statistics"),
+        name="investment_statistics",
+    ),
 ]

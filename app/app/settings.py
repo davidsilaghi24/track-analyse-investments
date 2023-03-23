@@ -22,7 +22,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-dl3vi6e#j0y0b-1zeiw!v*$f!1fau7lsx38nu5fv8056*qvdrv"
+SECRET_KEY = (
+    "django-insecure-dl3vi6e#j0y0b-1zeiw!v*$f!1fau7lsx38nu5fv8056*qvdrv"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -45,7 +47,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "rest_framework_simplejwt",
     "redis",
-    ]
+]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -139,7 +141,9 @@ AUTH_USER_MODEL = "ta_investments.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication"
+    ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
@@ -149,7 +153,7 @@ CELERY_BROKER_URL = "redis://redis:6379"
 
 CELERY_RESULT_BACKEND = "redis://redis:6379"
 
-INVESTMENT_STATISTICS_CACHE_KEY = 'investment_statistics'
+INVESTMENT_STATISTICS_CACHE_KEY = "investment_statistics"
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),

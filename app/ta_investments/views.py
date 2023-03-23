@@ -1,5 +1,6 @@
 import csv
 import io
+from .filters import CashFlowFilter, LoanFilter
 
 from rest_framework import views, response, status, generics, permissions
 from rest_framework.response import Response
@@ -17,6 +18,7 @@ from django.core.exceptions import ValidationError
 from rest_framework import permissions
 from rest_framework.parsers import MultiPartParser
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 class LoanListCreateView(generics.ListCreateAPIView):
@@ -26,6 +28,8 @@ class LoanListCreateView(generics.ListCreateAPIView):
     search_fields = ['identifier', 'issue_date', 'rating', 'maturity_date']
     ordering_fields = '__all__'
     permission_classes = [IsInvestor, IsAnalyst]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = LoanFilter
 
     @extend_schema(
         summary='List and create loans',
@@ -53,6 +57,8 @@ class CashflowListCreateView(generics.ListCreateAPIView):
     search_fields = ['loan_identifier__identifier', 'reference_date', 'type']
     ordering_fields = '__all__'
     permission_classes = [IsInvestor, IsAnalyst]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = CashFlowFilter
 
     @extend_schema(
         summary='List and create cash flows',

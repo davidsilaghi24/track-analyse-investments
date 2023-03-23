@@ -15,8 +15,9 @@ class LoanAPITestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.test_user = User.objects.create_user(
-            email="testuser@example.com", password="testpassword", user_type="Investor"
-        )
+            email="testuser@example.com",
+            password="testpassword",
+            user_type="Investor")
         self.client.force_authenticate(user=self.test_user)
         self.loan_data = {
             "identifier": "L103",
@@ -28,7 +29,10 @@ class LoanAPITestCase(TestCase):
         }
 
     def test_create_loan(self):
-        response = self.client.post(reverse("loan-list-create"), self.loan_data, format="json")
+        response = self.client.post(
+            reverse("loan-list-create"),
+            self.loan_data,
+            format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Loan.objects.count(), 1)
 
@@ -38,7 +42,11 @@ class LoanAPITestCase(TestCase):
 
     def test_retrieve_loan(self):
         loan = Loan.objects.create(**self.loan_data)
-        response = self.client.get(reverse("loan-detail", kwargs={"pk": loan.pk}))
+        response = self.client.get(
+            reverse(
+                "loan-detail",
+                kwargs={
+                    "pk": loan.pk}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["identifier"], loan.identifier)
 
@@ -46,14 +54,21 @@ class LoanAPITestCase(TestCase):
         loan = Loan.objects.create(**self.loan_data)
         updated_data = self.loan_data.copy()
         updated_data["rating"] = 5
-        response = self.client.put(reverse("loan-detail", kwargs={"pk": loan.pk}), updated_data, format="json")
+        response = self.client.put(
+            reverse(
+                "loan-detail",
+                kwargs={
+                    "pk": loan.pk}),
+            updated_data,
+            format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         loan.refresh_from_db()
         self.assertEqual(loan.rating, 5)
 
     def test_delete_loan(self):
         loan = Loan.objects.create(**self.loan_data)
-        response = self.client.delete(reverse("loan-detail", kwargs={"pk": loan.pk}))
+        response = self.client.delete(
+            reverse("loan-detail", kwargs={"pk": loan.pk}))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Loan.objects.count(), 0)
 
@@ -62,8 +77,9 @@ class CashflowAPITestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.test_user = User.objects.create_user(
-            email="testuser@example.com", password="testpassword", user_type="Investor"
-        )
+            email="testuser@example.com",
+            password="testpassword",
+            user_type="Investor")
         self.client.force_authenticate(user=self.test_user)
         self.loan = Loan.objects.create(
             **{
@@ -84,11 +100,15 @@ class CashflowAPITestCase(TestCase):
         }
 
     def test_create_cashflow(self):
-        response = self.client.post(reverse("cashflow-list-create"), self.cashflow_data, format="json")
+        response = self.client.post(
+            reverse("cashflow-list-create"),
+            self.cashflow_data,
+            format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Cashflow.objects.count(), 1)
 
-        # Now that we've created a cash flow, the Loan object should have calculated fields populated.
+        # Now that we've created a cash flow, the Loan object should have
+        # calculated fields populated.
         self.loan.refresh_from_db()
         self.assertIsNotNone(self.loan.investment_date)
         self.assertIsNotNone(self.loan.invested_amount)
@@ -113,9 +133,14 @@ class CashflowAPITestCase(TestCase):
             type=self.cashflow_data["type"],
             amount=self.cashflow_data["amount"],
         )
-        response = self.client.get(reverse("cashflow-detail", kwargs={"pk": cashflow.pk}))
+        response = self.client.get(
+            reverse(
+                "cashflow-detail",
+                kwargs={
+                    "pk": cashflow.pk}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(str(response.data["loan_identifier"]), cashflow.loan_identifier.identifier)
+        self.assertEqual(
+            str(response.data["loan_identifier"]), cashflow.loan_identifier.identifier)
 
     def test_update_cashflow(self):
         cashflow = Cashflow.objects.create(
@@ -142,7 +167,11 @@ class CashflowAPITestCase(TestCase):
             type=self.cashflow_data["type"],
             amount=self.cashflow_data["amount"],
         )
-        response = self.client.delete(reverse("cashflow-detail", kwargs={"pk": cashflow.pk}))
+        response = self.client.delete(
+            reverse(
+                "cashflow-detail",
+                kwargs={
+                    "pk": cashflow.pk}))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Cashflow.objects.count(), 0)
 
@@ -151,8 +180,9 @@ class AnalystCannotCreateLoanTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.analyst_user = User.objects.create_user(
-            email="analyst@example.com", password="testpassword", user_type="Analyst"
-        )
+            email="analyst@example.com",
+            password="testpassword",
+            user_type="Analyst")
         self.client.force_authenticate(user=self.analyst_user)
         self.loan_data = {
             "identifier": "L104",
@@ -164,7 +194,10 @@ class AnalystCannotCreateLoanTestCase(TestCase):
         }
 
     def test_analyst_cannot_create_loan(self):
-        response = self.client.post(reverse("loan-list-create"), self.loan_data, format="json")
+        response = self.client.post(
+            reverse("loan-list-create"),
+            self.loan_data,
+            format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(Loan.objects.count(), 0)
 
@@ -173,11 +206,13 @@ class TokenAPITestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.test_user = User.objects.create_user(
-            email="testuser@example.com", password="testpassword", user_type="Investor"
-        )
+            email="testuser@example.com",
+            password="testpassword",
+            user_type="Investor")
 
     def test_obtain_token(self):
-        response = self.client.post("/api/token/", {"email": "testuser@example.com", "password": "testpassword"})
+        response = self.client.post(
+            "/api/token/", {"email": "testuser@example.com", "password": "testpassword"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
@@ -190,14 +225,16 @@ class CsvUploadViewTestCase(TestCase):
         self.loan_csv = self.resource_path / "loans.csv"
         self.cashflow_csv = self.resource_path / "cash_flows.csv"
         self.test_user = User.objects.create_user(
-            email="testuser@example.com", password="testpassword", user_type="Investor"
-        )
+            email="testuser@example.com",
+            password="testpassword",
+            user_type="Investor")
         self.client.force_authenticate(user=self.test_user)
 
     @override_settings(MEDIA_ROOT=tempfile.gettempdir())
     def test_upload_csv_files(self):
         with open(self.loan_csv, "rb") as f:
-            response = self.client.post("/api/ta_investments/upload/loan-csv/", {"file": f}, format="multipart")
+            response = self.client.post(
+                "/api/ta_investments/upload/loan-csv/", {"file": f}, format="multipart")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # assert that a loan object was created with the expected values
@@ -224,7 +261,8 @@ class CsvUploadViewTestCase(TestCase):
         self.assertEqual(cashflow.type, "FUNDING")
         self.assertEqual(cashflow.amount, Decimal("-100000.00"))
 
-        # assert that the loan object has the expected calculated fields populated
+        # assert that the loan object has the expected calculated fields
+        # populated
         loan.refresh_from_db()
         self.assertIsNotNone(loan.investment_date)
         self.assertIsNotNone(loan.invested_amount)
@@ -236,8 +274,9 @@ class RepaymentAPITestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.test_user = User.objects.create_user(
-            email="testuser@example.com", password="testpassword", user_type="Investor"
-        )
+            email="testuser@example.com",
+            password="testpassword",
+            user_type="Investor")
         self.client.force_authenticate(user=self.test_user)
         self.loan = Loan.objects.create(
             **{
@@ -267,7 +306,10 @@ class RepaymentAPITestCase(TestCase):
         # Store initial values
         initial_expected_irr = self.loan.expected_irr
 
-        response = self.client.post(reverse("create_repayment"), self.repayment_data, format="json")
+        response = self.client.post(
+            reverse("create_repayment"),
+            self.repayment_data,
+            format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Cashflow.objects.count(), 1)
         self.assertEqual(Cashflow.objects.first().type, "REPAYMENT")
@@ -275,3 +317,37 @@ class RepaymentAPITestCase(TestCase):
         # Refresh the loan object and check if the values have changed
         self.loan.refresh_from_db()
         self.assertNotEqual(self.loan.expected_irr, initial_expected_irr)
+
+
+class InvestmentStatisticsViewTestCase(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="testuser", password="testpass")
+        self.client.login(username="testuser", password="testpass")
+
+        # Create a new Loan instance
+        self.loan_data = {
+            "identifier": "L001",
+            "issue_date": date(2022, 1, 1),
+            "total_amount": Decimal("10000"),
+            "rating": 5,
+            "maturity_date": date(2023, 1, 1),
+            "total_expected_interest_amount": Decimal("1000"),
+        }
+        self.loan = Loan.objects.create(**self.loan_data)
+
+        # Create a Cashflow instance associated with the Loan
+        self.cashflow_data = {
+            "loan_identifier": self.loan,
+            "type": "FUNDING",
+            "reference_date": date(2022, 1, 1),
+            "amount": Decimal("10000"),
+        }
+        self.cashflow = Cashflow.objects.create(**self.cashflow_data)
+
+    def test_investment_statistics_view(self):
+        url = reverse("investment_statistics")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, "Investment Statistics")

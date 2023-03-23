@@ -38,9 +38,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="loan",
             name="expected_irr",
-            field=models.DecimalField(
-                blank=True, decimal_places=6, max_digits=10, null=True
-            ),
+            field=models.DecimalField(blank=True, decimal_places=6, max_digits=10, null=True),
         ),
         migrations.AlterField(
             model_name="loan",
@@ -55,9 +53,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="loan",
             name="realized_irr",
-            field=models.DecimalField(
-                blank=True, decimal_places=6, max_digits=10, null=True
-            ),
+            field=models.DecimalField(blank=True, decimal_places=6, max_digits=10, null=True),
         ),
         migrations.AlterField(
             model_name="loan",

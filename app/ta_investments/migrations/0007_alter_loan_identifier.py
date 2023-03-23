@@ -12,6 +12,9 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="loan",
             name="identifier",
-            field=models.CharField(editable=False, max_length=100, unique=True),
+            field=models.CharField(
+                editable=False,
+                max_length=100,
+                unique=True),
         ),
     ]

@@ -8,4 +8,6 @@ class IsInvestor(BasePermission):
 
 class IsAnalyst(BasePermission):
     def has_permission(self, request, view):
-        return not (request.user.groups.filter(name="Analyst").exists() and request.method == "GET")
+        return not (
+            request.user.groups.filter(
+                name="Analyst").exists() and request.method == "GET")

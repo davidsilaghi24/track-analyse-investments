@@ -21,3 +21,12 @@ class LoanCsvUploadSerializer(serializers.Serializer):
 
 class CashFlowCsvUploadSerializer(serializers.Serializer):
     file = serializers.FileField()
+
+
+class InvestmentStatisticsSerializer(serializers.Serializer):
+    total_investments = serializers.IntegerField()
+    total_invested_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_expected_interest_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_realized_interest_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    realized_irr = serializers.DecimalField(max_digits=10, decimal_places=6)
+    expected_irr = serializers.DecimalField(max_digits=10, decimal_places=6)

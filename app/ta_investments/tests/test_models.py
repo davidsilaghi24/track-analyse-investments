@@ -19,7 +19,8 @@ class UserModelTests(TestCase):
         email = "test@example.com"
         password = "testpass123"
         user_type = "Investor"
-        user = User.objects.create_user(email=email, password=password, user_type=user_type)
+        user = User.objects.create_user(
+            email=email, password=password, user_type=user_type)
         self.assertEqual(user.email, email)
         self.assertEqual(user.user_type, user_type)
         self.assertTrue(user.check_password(password))
@@ -33,7 +34,8 @@ class UserModelTests(TestCase):
             ["Test2@Example.com", "Test2@example.com"],
         ]
         for email, expected in sample_emails:
-            user = User.objects.create_user(email=email, password="testpass123", user_type="Investor")
+            user = User.objects.create_user(
+                email=email, password="testpass123", user_type="Investor")
             self.assertEqual(user.email, expected)
 
     def test_new_user_without_email_raiser_error(self):
@@ -47,7 +49,8 @@ class UserModelTests(TestCase):
         """
         Test creating superuser.
         """
-        user = User.objects.create_superuser("test@example.com", "test123", user_type="Admin")
+        user = User.objects.create_superuser(
+            "test@example.com", "test123", user_type="Admin")
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
 

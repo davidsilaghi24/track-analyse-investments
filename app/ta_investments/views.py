@@ -1,19 +1,19 @@
 import csv
 import io
+from .utils import calculate_investment_statistics
 
-from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
-from rest_framework import generics, permissions, response, status, views
+from rest_framework import generics, status
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.parsers import FileUploadParser, MultiPartParser
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .filters import CashFlowFilter, LoanFilter
 from .models import Cashflow, Loan
 from .permissions import IsAnalyst, IsInvestor
-from .serializers import CashflowSerializer, LoanSerializer
+from .serializers import CashflowSerializer, InvestmentStatisticsSerializer, LoanSerializer
 
 
 class LoanListCreateView(generics.ListCreateAPIView):
@@ -112,7 +112,8 @@ class LoansCSVUploadView(APIView):
 
         # check if file was uploaded
         if not csv_file:
-            return Response({"error": "CSV file is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "CSV file is required"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         # check if file extension is valid
         if not csv_file.name.endswith(".csv"):
@@ -134,7 +135,7 @@ class LoansCSVUploadView(APIView):
                 "maturity_date",
                 "total_expected_interest_amount",
             ]:
-                loan = Loan.objects.create(
+                Loan.objects.create(
                     identifier=row["identifier"],
                     issue_date=row["issue_date"],
                     total_amount=row["total_amount"],
@@ -167,7 +168,8 @@ class CashflowCSVUploadView(APIView):
 
         # check if file was uploaded
         if not csv_file:
-            return Response({"error": "CSV file is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "CSV file is required"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         # check if file extension is valid
         if not csv_file.name.endswith(".csv"):
@@ -187,19 +189,18 @@ class CashflowCSVUploadView(APIView):
                 "type",
                 "amount",
             ]:
-                loan = Loan.objects.filter(identifier=row["loan_identifier"]).first()
+                loan = Loan.objects.filter(
+                    identifier=row["loan_identifier"]).first()
                 if loan:
-                    cashflow = Cashflow.objects.create(
+                    Cashflow.objects.create(
                         loan_identifier=loan,
                         reference_date=row["reference_date"],
                         type=row["type"].upper(),
                         amount=row["amount"],
                     )
                 else:
-                    return Response(
-                        {"error": "Loan with identifier {} not found".format(row["loan_identifier"])},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+                    return Response({"error": "Loan with identifier {} not found".format(
+                        row["loan_identifier"])}, status=status.HTTP_400_BAD_REQUEST, )
             else:
                 return Response(
                     {"error": str("Wrong fields loans.csv file")},
@@ -222,10 +223,8 @@ class CreateRepaymentView(generics.CreateAPIView):
         loan = Loan.objects.filter(identifier=loan_identifier).first()
 
         if not loan:
-            return Response(
-                {"error": "Loan with identifier {} not found".format(loan_identifier)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"error": "Loan with identifier {} not found".format(
+                loan_identifier)}, status=status.HTTP_400_BAD_REQUEST, )
 
         repayment_amount = request.data.get("amount")
         repayment_date = request.data.get("reference_date")
@@ -239,3 +238,18 @@ class CreateRepaymentView(generics.CreateAPIView):
 
         serializer = self.get_serializer(cashflow)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class InvestmentStatisticsView(generics.ListAPIView):
+    serializer_class = InvestmentStatisticsSerializer
+    permission_classes = [IsInvestor, IsAnalyst]
+
+    @extend_schema(
+        description="Returns investment statistics for all loans and cashflows",
+        responses={200: InvestmentStatisticsSerializer},
+    )
+    def get(self, request, *args, **kwargs):
+        loans = Loan.objects.all()
+        cashflows = Cashflow.objects.all()
+        investment_statistics = calculate_investment_statistics(loans, cashflows)
+        return Response(investment_statistics, status=status.HTTP_200_OK)

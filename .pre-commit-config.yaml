@@ -23,5 +23,4 @@ repos:
     rev: v1.5.7
     hooks:
     -   id: autopep8
-        args: [--aggressive, --in-place, --aggressive, --max-line-length=120]
-exclude: '\b[mM]igrations\b/'
+        args: [--aggressive, --in-place, --aggressive, --max-line-length=78]

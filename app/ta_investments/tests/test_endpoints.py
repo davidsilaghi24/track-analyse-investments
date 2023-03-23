@@ -197,12 +197,19 @@ class RepaymentAPITestCase(TestCase):
         self.client.force_authenticate(user=self.test_user)
         self.loan = Loan.objects.create(**{
             "identifier": "L102",
-            "issue_date": "2023-01-01",
+            "issue_date": "2021-01-01",
             "rating": 6,
-            "maturity_date": "2023-12-31",
+            "maturity_date": "2022-12-31",
             "total_amount": 100000.00,
             "total_expected_interest_amount": 5000.00,
         })
+
+        # Manually set the values for testing
+        self.loan.investment_date = date(2023, 1, 1)
+        self.loan.invested_amount = 100000.00
+        self.loan.expected_interest_amount = 5000.00
+        self.loan.expected_irr = 0.05
+        self.loan.save()
 
         self.repayment_data = {
             "loan_identifier": self.loan.identifier,
@@ -211,7 +218,14 @@ class RepaymentAPITestCase(TestCase):
         }
 
     def test_create_repayment(self):
+        # Store initial values
+        initial_expected_irr = self.loan.expected_irr
+
         response = self.client.post(reverse('create_repayment'), self.repayment_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Cashflow.objects.count(), 1)
         self.assertEqual(Cashflow.objects.first().type, 'REPAYMENT')
+
+        # Refresh the loan object and check if the values have changed
+        self.loan.refresh_from_db()
+        self.assertNotEqual(self.loan.expected_irr, initial_expected_irr)

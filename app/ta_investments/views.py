@@ -153,3 +153,29 @@ class CashflowCSVUploadView(APIView):
                 return Response({'error': str('Wrong fields loans.csv file')}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'message': 'Cashflow CSV file uploaded successfully'}, status=status.HTTP_201_CREATED)
+
+
+class CreateRepaymentView(generics.CreateAPIView):
+    queryset = Cashflow.objects.all()
+    serializer_class = CashflowSerializer
+    permission_classes = [permissions.IsAuthenticated, IsInvestor, IsAnalyst]
+
+    def post(self, request, *args, **kwargs):
+        loan_identifier = request.data.get('loan_identifier')
+        loan = Loan.objects.filter(identifier=loan_identifier).first()
+
+        if not loan:
+            return Response({'error': 'Loan with identifier {} not found'.format(loan_identifier)}, status=status.HTTP_400_BAD_REQUEST)
+
+        repayment_amount = request.data.get('amount')
+        repayment_date = request.data.get('reference_date')
+
+        cashflow = Cashflow.objects.create(
+            loan_identifier=loan,
+            reference_date=repayment_date,
+            type='REPAYMENT',
+            amount=repayment_amount
+        )
+
+        serializer = self.get_serializer(cashflow)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

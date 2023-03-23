@@ -188,3 +188,30 @@ class CsvUploadViewTestCase(TestCase):
         self.assertIsNotNone(loan.invested_amount)
         self.assertIsNotNone(loan.expected_interest_amount)
         self.assertIsNotNone(loan.expected_irr)
+
+
+class RepaymentAPITestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.test_user = User.objects.create_user(email='testuser@example.com', password='testpassword', user_type='Investor')
+        self.client.force_authenticate(user=self.test_user)
+        self.loan = Loan.objects.create(**{
+            "identifier": "L102",
+            "issue_date": "2023-01-01",
+            "rating": 6,
+            "maturity_date": "2023-12-31",
+            "total_amount": 100000.00,
+            "total_expected_interest_amount": 5000.00,
+        })
+
+        self.repayment_data = {
+            "loan_identifier": self.loan.identifier,
+            "amount": 1000.00,
+            "reference_date": "2023-01-31"
+        }
+
+    def test_create_repayment(self):
+        response = self.client.post(reverse('create_repayment'), self.repayment_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Cashflow.objects.count(), 1)
+        self.assertEqual(Cashflow.objects.first().type, 'REPAYMENT')

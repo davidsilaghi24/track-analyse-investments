@@ -7,6 +7,8 @@ from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         Group, PermissionsMixin)
 from django.core.cache import cache
 from django.db import models
+from django.conf import settings
+from django.db.models import Min
 from django.db.models.signals import post_migrate, post_save
 from django.dispatch import receiver
 from pyxirr import xirr
@@ -87,7 +89,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = "email"
 
 
+class Portfolio(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Loan(models.Model):
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='loans', null=True)
     identifier = models.CharField(max_length=100, unique=True, editable=False)
     issue_date = models.DateField()
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -108,28 +122,33 @@ class Loan(models.Model):
     is_closed = models.BooleanField(default=False)
 
     def calculate_fields(self):
-        funding_cash_flow = self.cashflows.filter(type="FUNDING").first()
-        if funding_cash_flow:
-            self.investment_date = funding_cash_flow.reference_date
-            self.invested_amount = funding_cash_flow.amount
-            self.expected_interest_amount = Decimal(self.total_expected_interest_amount) * (
-                Decimal(self.invested_amount) / Decimal(self.total_amount))
+        funding_cash_flows = self.cashflows.filter(type="FUNDING")
 
-            dates = [self.investment_date, self.maturity_date]
-            amounts = [
-                -self.invested_amount,
-                self.invested_amount + self.expected_interest_amount,
-            ]
-            self.expected_irr = xirr(dates, amounts)
+        if not funding_cash_flows.exists():
+            return
 
-            self.is_closed = self.check_is_closed()
+        self.investment_date = funding_cash_flows.aggregate(Min('reference_date'))['reference_date__min']
+        self.invested_amount = sum([cf.amount for cf in funding_cash_flows])
 
-            if self.is_closed:
-                realized_cashflows = [(cf.reference_date, cf.amount)
-                                      for cf in self.cashflows.all()]
-                realized_dates = [cf[0] for cf in realized_cashflows]
-                realized_amounts = [cf[1] for cf in realized_cashflows]
-                self.realized_irr = xirr(realized_dates, realized_amounts)
+        self.expected_interest_amount = Decimal(self.total_expected_interest_amount) * (
+            Decimal(self.invested_amount) / Decimal(self.total_amount))
+
+        dates = [self.investment_date, self.maturity_date]
+        amounts = [
+            -self.invested_amount,
+            self.invested_amount + self.expected_interest_amount,
+        ]
+        self.expected_irr = xirr(dates, amounts)
+
+        self.is_closed = self.check_is_closed()
+
+        if self.is_closed:
+            realized_cashflows = [(cf.reference_date, cf.amount)
+                                for cf in self.cashflows.all()]
+            realized_dates = [cf[0] for cf in realized_cashflows]
+            realized_amounts = [cf[1] for cf in realized_cashflows]
+            self.realized_irr = xirr(realized_dates, realized_amounts)
+
 
     def check_is_closed(self):
         funding_cash_flow = self.cashflows.filter(type="Funding").first()
@@ -153,7 +172,8 @@ class Loan(models.Model):
 class Cashflow(models.Model):
     TYPES = (
         ("FUNDING", "Funding"),
-        ("REPAYMENT", "Repayment"),
+        ("PRINCIPAL_REPAYMENT", "Principal Repayment"),
+        ("INTEREST_REPAYMENT", "Interest Repayment"),
     )
     loan_identifier = models.ForeignKey(
         Loan,
@@ -178,7 +198,4 @@ class Cashflow(models.Model):
 @receiver(post_save, sender=Loan)
 @receiver(post_save, sender=Cashflow)
 def invalidate_cache(sender, instance, **kwargs):
-    from django.conf import settings
-    from django.core.cache import cache
-
     cache.delete(settings.INVESTMENT_STATISTICS_CACHE_KEY)
